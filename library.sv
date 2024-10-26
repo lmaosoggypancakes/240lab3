@@ -64,41 +64,6 @@ module Multiplexer
     end
  endmodule: Mux2to1
 
- module MagComparator
-    (input logic [7:0] A,
-     input logic [7:0] B,
-     output logic AltB,
-     output logic AeqB,
-     output logic AgtB);
-
-    always_comb begin
-        if (A == B) begin
-            AltB = 0;
-            AeqB = 1;
-            AgtB = 0;
-        end
-        else if (A > B) begin
-            AltB = 0;
-            AeqB = 0;
-            AgtB = 1;
-        end
-        else begin
-            AltB = 1;
-            AeqB = 0;
-            AgtB = 0;
-        end
-    end
- endmodule: MagComparator
-
- module Comparator
-    (input logic [3:0] A,
-     input logic [3:0] B,
-     output logic AeqB);
-
-    assign AeqB = (A == B) ? 1 : 0;
-
- endmodule: Comparator
-
 module PriorityEncoder
     (output logic [2:0] Y,
      output logic       valid,
@@ -252,4 +217,19 @@ module Counter
 
 
 endmodule: Counter
+
+module range_check
+    #(parameter WIDTH = 8)
+    (input logic [WIDTH-1:0] low, high, val,
+     output logic is_between);
+
+    logic val_low, val_high;
+    logic val_low_eq, val_high_eq;
+    MagComp #(WIDTH) c1(low, val, val_low, val_low_eq,),
+                     c2(val, high, val_high, val_high_eq);
+
+    assign is_between = (val_low | val_low_eq) & (val_high | val_high_eq);
+
+endmodule: range_check
+
 
