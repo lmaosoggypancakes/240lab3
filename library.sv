@@ -112,25 +112,6 @@ module PriorityEncoder
     end
 endmodule: PriorityEncoder
 
-module Adder
-    (input logic cin,
-     input logic [4:0] A,
-     input logic [4:0] B,
-     output logic cout,
-     output logic [4:0] sum);
-
-    logic [5:0] s;
- always_comb begin
-    s = A + B + cin;
-    cout = s[5];
-    sum[0] = s[0];
-    sum[1] = s[1];
-    sum[2] = s[2];
-    sum[3] = s[3];
-    sum[4] = s[4];
- end
-endmodule: Adder
-
 module Comparator
     #(parameter WIDTH = 8)
     (input logic [WIDTH-1:0] A,
@@ -208,16 +189,6 @@ module Register
 
 endmodule: Register
 
-
-module Counter
-    #(parameter WIDTH = 8)
-    (input logic en, clear, load, up, clock,
-     input logic [WIDTH-1:0] D,
-     output logic [WIDTH-1:0] Q);
-
-
-endmodule: Counter
-
 module range_check
     #(parameter WIDTH = 8)
     (input logic [WIDTH-1:0] low, high, val,
@@ -226,10 +197,40 @@ module range_check
     logic val_low, val_high;
     logic val_low_eq, val_high_eq;
     MagComp #(WIDTH) c1(low, val, val_low, val_low_eq,),
-                     c2(val, high, val_high, val_high_eq);
+                     c2(val, high, val_high, val_high_eq,);
 
     assign is_between = (val_low | val_low_eq) & (val_high | val_high_eq);
 
 endmodule: range_check
 
+module vga
+    (input logic CLOCK_50, reset,
+     output logic HS, VS, blank,
+     output logic [8:0] row,
+     output logic [9:0] col);
 
+     logic v_sync_en, v_sync_clear, v_sync_load, v_sync_up;
+     logic [15:0] v_sync_D, v_sync_Q;
+     Counter #(16) c1(.en(v_sync_en), .clear(v_sync_clear),
+                      .load(v_sync_load), .clock(CLOCK_50),
+                      .D(v_sync_D), .Q(v_sync_Q)); // counts an entire period of Ts for VS
+
+     logic end_of_period;
+     Comparator #(16) cp1(.A(v_sync_Q), .B(16'd833600), .AeqB(end_of_period));
+     assign v_sync_en = ~end_of_period;
+
+     logic v_in_pw;
+     range_check #(16) r1(.low('0), .high(16'b192), .val(v_sync_Q), .is_between(v_in_pw));
+     assign VS = ~v_in_pw;
+
+     logic v_ready_to_count;
+     range_check #(16) r2(.low(16'd49600), .high(16'd817600), .val(v_sync_Q), .is_between(v_ready_to_count));
+
+     logic clear_row;
+     Counter #(16) c2(.en(v_ready_to_count), .clear(clear_row),
+                      .load(), .clock(CLOCK_50),
+                      .D(), .Q(row));
+
+     assign row = 1;
+     assign blank = 1;
+endmodule: vga
